@@ -32,39 +32,50 @@
                     (not= #{nil} path))]
      path)))
 
-(defn score-board [board]
-  (case (winner board)
-    X  10
-    O -10
+(defn score-board [board player]
+  (if-let [winner (winner board)]
+    (if (= 'X winner) 10 -10)
     0))
 
 (defn next-board-states [board player]
   (map #(assoc-in board % player) (open-coords board)))
 
-(defn simulate []
+(defn simulate [get-player-move]
   (loop [players (cycle '[O X])
-         board (first (next-board-states (make-board 3) (first players)))]
-    (println)
-    (print-board board)
-    (if-let [next-states (seq (next-board-states board (first players)))]
-      (let [next-moves (map
-                         (fn [node]
-                           [node (minimax/score node
-                                                5
-                                                (memoize score-board)
-                                                (memoize next-board-states)
-                                                true)])
-                         next-states)
-            best-move (first (last (sort-by second next-moves)))]
-        (println "player move scores:" (first players)
-                 (map second next-moves)
-                 (count next-moves) "options")
-        (if (winner best-move)
-          (do
-            (println)
-            (print-board best-move)
-            (first players))
-          (recur (rest players) best-move)))
-      (println 'tie))))
+         board (make-board 3)]
+    (let [new-board
+          (if (= 'O (first players))
+            (let [cell-num (dec (get-player-move))
+                  cell-pos [(int (/ cell-num 3))
+                            (mod cell-num 3)]]
+              (if-not (get-in board cell-pos)
+                (assoc-in board cell-pos 'O)
+                (throw (IllegalArgumentException. "cell already occupied!"))))
+            (let [next-states (seq (next-board-states board (first players)))
+                  next-moves (map
+                               (fn [node]
+                                 [node (minimax/score node
+                                                      50
+                                                      score-board
+                                                      next-board-states
+                                                      true)])
+                               next-states)
+                  _ (do
+                      (println "----")
+                      (println "states:")
+                      (doseq [[board score] next-moves]
+                        (print-board board)
+                        (println "score:" score))
+                      (println "----"))
+                  best-move (first (last (sort-by second next-moves)))]
+              best-move))]
+      (println (first players) "turn:")
+      (print-board new-board)
+      (Thread/sleep 250)
+      (or (winner new-board)
+          (recur (rest players) new-board)))))
 
-(simulate)
+(comment
+  (simulate (fn []
+              (println "Enter cell number (1-9):")
+              (Integer/parseInt (read-line)))))

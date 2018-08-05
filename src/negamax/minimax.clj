@@ -18,13 +18,13 @@
 (defn score [node depth-limit get-score get-children maximizing?]
   (letfn [(iter [node depth maximizing?]
             (let [player (if maximizing? 'X 'O)]
-              (if (or (zero? depth)
+              (if (or (<= depth-limit depth)
                       (empty? (get-children node player)))
-                (get-score node)
+                (/ (get-score node player) depth)
                 (let [[minmax limit] (if maximizing?
                                        [max Double/NEGATIVE_INFINITY]
                                        [min Double/POSITIVE_INFINITY])]
                   (->> (get-children node player)
-                       (map #(iter % (dec depth) (not maximizing?)))
+                       (map #(iter % (inc depth) (not maximizing?)))
                        (apply minmax limit))))))]
-    (iter node depth-limit maximizing?)))
+    (iter node 0 maximizing?)))
