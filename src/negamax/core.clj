@@ -58,14 +58,13 @@
     (let [player (first player-seq)
           new-board
           (if (= human player)
-            (let [cell-pos (get-player-move)]
+            (let [cell-pos (get-player-move board)]
               (if-not (get-in board cell-pos)
                 (assoc-in board cell-pos human)
                 (throw (IllegalArgumentException. "cell already occupied!"))))
             (negamax board 20 game-over? score-board next-board-states computer human))]
       (println player "turn:")
       (print-board new-board)
-      (Thread/sleep 250)
       (cond
         (empty? (open-coords new-board)) nil
         (winner new-board) (winner new-board)
@@ -73,7 +72,8 @@
 
 (comment
   (play
-    (fn []
+    (fn [& _]
+      (Thread/sleep 200)
       (println "Enter cell number [1-9] (left->right, top->down):")
       (let [n (dec (Integer/parseInt (read-line)))]
         [(int (/ n 3))
