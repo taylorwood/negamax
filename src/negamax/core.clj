@@ -1,4 +1,6 @@
-(ns negamax.core)
+(ns negamax.core
+  "Implements tic-tac-toe vs. a smarty pants simulator."
+  (:require [negamax.negamax :refer :all]))
 
 (defn make-board [width & [height]]
   (let [empty-row (vec (repeat width nil))]
@@ -14,17 +16,19 @@
         :when (nil? (get-in board [y x]))]
     [y x]))
 
-(defn rotate [m] (apply map vector (reverse m)))
-
-(defn win-paths [board]
-  (let [rotated (rotate board)
+(defn win-paths
+  "Returns sets of cell values along vertical/horizontal/diagonal paths."
+  [board]
+  (let [rotated (apply map vector (reverse board))
         diagonals #(map-indexed (fn [i row] (row i)) %)]
     (concat (map set board)
             (map set rotated)
             [(set (diagonals board))]
             [(set (diagonals rotated))])))
 
-(defn winner [board]
+(defn winner
+  "Returns the tic-tac-toe winner, if any."
+  [board]
   (ffirst
    (for [path (win-paths board)
          :when (and (= 1 (count path))
@@ -46,42 +50,32 @@
 
 (def human 'O)
 (def computer 'X)
-
-(defn negamax [board depth-limit]
-  (letfn [(score [board depth maximize?]
-            (let [player (if maximize? 'X 'O)]
-              (if (or (< depth-limit depth)
-                      (game-over? board))
-                (/ (score-board board player) depth)
-                (->> (next-board-states board player)
-                     (map #(- (score % (inc depth) (not maximize?))))
-                     (apply max Integer/MIN_VALUE)))))]
-    (->> (next-board-states board computer)
-         (map (fn [s] [s (score s 1 false)]))
-         (sort-by second)
-         (ffirst))))
+(def players [human computer])
 
 (defn play [get-player-move]
-  (loop [players (cycle [human computer])
+  (loop [player-seq (cycle players)
          board (make-board 3)]
-    (let [player (first players)
-          new-board (if (= human player)
-                      (let [cell-pos (get-player-move)]
-                        (if-not (get-in board cell-pos)
-                          (assoc-in board cell-pos human)
-                          (throw (IllegalArgumentException. "cell already occupied!"))))
-                      (negamax board 20))]
+    (let [player (first player-seq)
+          new-board
+          (if (= human player)
+            (let [cell-pos (get-player-move)]
+              (if-not (get-in board cell-pos)
+                (assoc-in board cell-pos human)
+                (throw (IllegalArgumentException. "cell already occupied!"))))
+            (negamax board 20 game-over? score-board next-board-states computer human))]
       (println player "turn:")
       (print-board new-board)
       (Thread/sleep 250)
       (cond
         (empty? (open-coords new-board)) nil
         (winner new-board) (winner new-board)
-        :else (recur (rest players) new-board)))))
+        :else (recur (rest player-seq) new-board)))))
 
 (comment
-  (play (fn []
-          (println "Enter cell number (1-9):")
-          (let [n (dec (Integer/parseInt (read-line)))]
-            [(int (/ n 3))
-             (mod n 3)]))))
+  (play
+    (fn []
+      (println "Enter cell number [1-9] (left->right, top->down):")
+      (let [n (dec (Integer/parseInt (read-line)))]
+        [(int (/ n 3))
+         (mod n 3)]))))
+
