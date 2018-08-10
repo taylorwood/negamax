@@ -1,5 +1,5 @@
 (ns negamax.core
-  "Implements tic-tac-toe vs. a smarty pants simulator."
+  "Implements tic-tac-toe vs. a real smarty pants simulator."
   (:require [negamax.negamax :refer :all]))
 
 (defn make-board [width & [height]]
@@ -26,9 +26,7 @@
             [(set (diagonals board))]
             [(set (diagonals rotated))])))
 
-(defn winner
-  "Returns the tic-tac-toe winner, if any."
-  [board]
+(defn winner [board]
   (ffirst
    (for [path (win-paths board)
          :when (and (= 1 (count path))
@@ -48,22 +46,25 @@
 (defn next-board-states [board player]
   (map #(assoc-in board % player) (open-coords board)))
 
+(def board-size 3)
 (def human 'O)
 (def computer 'X)
 (def players [human computer])
 
-(defn play [get-player-move]
+(defn play [get-human-move]
   (loop [player-seq (cycle players)
-         board (make-board 3)]
+         board (make-board board-size)]
     (let [player (first player-seq)
           new-board
           (if (= human player)
-            (let [cell-pos (get-player-move board)]
-              (if-not (get-in board cell-pos)
-                (assoc-in board cell-pos human)
+            (let [cell (get-human-move board)]
+              (if-not (get-in board cell)
+                (assoc-in board cell human)
                 (throw (IllegalArgumentException. "cell already occupied!"))))
-            (time (negamax board game-over? score-board next-board-states
-                           {:max-depth Integer/MAX_VALUE :computer computer :human human})))]
+            (time (->> (negamax board next-board-states game-over? score-board
+                                {:max-depth Integer/MAX_VALUE :computer computer :human human})
+                       (sort-by second)
+                       (ffirst))))]
       (println player "turn:")
       (print-board new-board)
       (cond
@@ -71,12 +72,19 @@
         (winner new-board) (winner new-board)
         :else (recur (rest player-seq) new-board)))))
 
-(comment
-  (play
-    (fn [& _]
-      (Thread/sleep 200)
-      (println "Enter cell number [1-9] (left->right, top->down):")
-      (let [n (dec (Integer/parseInt (read-line)))]
-        [(int (/ n 3))
-         (mod n 3)]))))
+(defn index->coord [n dim] [(int (/ n dim)) (mod n dim)])
 
+(defn -main [& _args]
+  (println "Let's play a game of Tic-tac-toe. You can go first!")
+  (println "Enter your moves as if the grid were numbered like a phone pad.")
+  (play
+   (fn [& _]
+     (index->coord
+      (->> (repeatedly #(try
+                          (println "Enter cell number [1-9]:")
+                          (Integer/parseInt (read-line))
+                          (catch Exception _)))
+           (filter (set (range 1 10)))
+           (first)
+           (dec))
+      board-size))))

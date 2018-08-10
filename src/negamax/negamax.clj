@@ -1,9 +1,10 @@
-(ns negamax.negamax)
+(ns negamax.negamax
+  "Implements negamax algorithm with alpha beta pruning.")
 
-(def −∞ Double/NEGATIVE_INFINITY)
-(def +∞ Double/POSITIVE_INFINITY)
+(def ^:const −∞ Double/NEGATIVE_INFINITY)
+(def ^:const +∞ Double/POSITIVE_INFINITY)
 
-(defn negamax [node terminate? heuristic get-children
+(defn negamax [node get-children terminate? heuristic
                {:keys [max-depth computer human]}]
   (letfn [(score [node depth alpha beta maximize?]
             (let [player (if maximize? computer human)]
@@ -13,7 +14,8 @@
                 (let [best
                       (reduce
                        (fn [[alpha value] child]
-                         (let [value' (max value (- (score child (inc depth) (- beta) (- alpha) (not maximize?))))
+                         (let [value' (max value
+                                           (- (score child (inc depth) (- beta) (- alpha) (not maximize?))))
                                alpha' (max alpha value')]
                            (if (>= alpha' beta)
                              (reduced value')
@@ -22,6 +24,4 @@
                        (get-children node player))]
                   (if (number? best) best (last best))))))]
     (->> (get-children node computer)
-         (map (fn [s] [s (score s 1 −∞ +∞ false)]))
-         (sort-by second)
-         (ffirst))))
+         (map (fn [s] [s (score s 1 −∞ +∞ false)])))))
