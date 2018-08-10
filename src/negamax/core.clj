@@ -62,7 +62,8 @@
               (if-not (get-in board cell-pos)
                 (assoc-in board cell-pos human)
                 (throw (IllegalArgumentException. "cell already occupied!"))))
-            (negamax board 20 game-over? score-board next-board-states computer human))]
+            (time (negamax board game-over? score-board next-board-states
+                           {:max-depth Integer/MAX_VALUE :computer computer :human human})))]
       (println player "turn:")
       (print-board new-board)
       (cond

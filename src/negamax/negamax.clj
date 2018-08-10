@@ -1,15 +1,27 @@
 (ns negamax.negamax)
 
-(defn negamax [node depth-limit terminate? heuristic get-children computer human]
-  (letfn [(score [node depth maximize?]
+(def −∞ Double/NEGATIVE_INFINITY)
+(def +∞ Double/POSITIVE_INFINITY)
+
+(defn negamax [node terminate? heuristic get-children
+               {:keys [max-depth computer human]}]
+  (letfn [(score [node depth alpha beta maximize?]
             (let [player (if maximize? computer human)]
-              (if (or (< depth-limit depth)
+              (if (or (< max-depth depth)
                       (terminate? node))
                 (/ (heuristic node player) depth) ;; depth quotient bias for early win
-                (->> (get-children node player)
-                     (map #(- (score % (inc depth) (not maximize?))))
-                     (apply max Double/NEGATIVE_INFINITY)))))]
+                (let [best
+                      (reduce
+                       (fn [[alpha value] child]
+                         (let [value' (max value (- (score child (inc depth) (- beta) (- alpha) (not maximize?))))
+                               alpha' (max alpha value')]
+                           (if (>= alpha' beta)
+                             (reduced value')
+                             [alpha' value'])))
+                       [alpha −∞]
+                       (get-children node player))]
+                  (if (number? best) best (last best))))))]
     (->> (get-children node computer)
-         (map (fn [s] [s (score s 1 false)]))
+         (map (fn [s] [s (score s 1 −∞ +∞ false)]))
          (sort-by second)
          (ffirst))))
