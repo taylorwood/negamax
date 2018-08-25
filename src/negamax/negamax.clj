@@ -5,9 +5,9 @@
 (def ^:const +∞ Double/POSITIVE_INFINITY)
 
 (defn negamax [node get-children terminate? heuristic
-               {:keys [max-depth computer human]}]
+               {:keys [max-depth player opponent]}]
   (letfn [(score [node depth alpha beta maximize?]
-            (let [player (if maximize? computer human)]
+            (let [player (if maximize? player opponent)]
               (if (or (< max-depth depth)
                       (terminate? node))
                 (/ (heuristic node player) depth) ;; depth quotient bias for early win
@@ -23,5 +23,5 @@
                        [alpha −∞]
                        (get-children node player))]
                   (if (number? best) best (last best))))))]
-    (->> (get-children node computer)
+    (->> (get-children node player)
          (map (fn [s] [s (score s 1 −∞ +∞ false)])))))

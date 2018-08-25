@@ -46,26 +46,12 @@
 (defn next-board-states [board player]
   (map #(assoc-in board % player) (open-coords board)))
 
-(def board-size 3)
-(def human 'O)
-(def computer 'X)
-(def players [human computer])
-
-(defn play [get-human-move]
+(defn play [board players]
   (loop [player-seq (cycle players)
-         board (make-board board-size)]
-    (let [player (first player-seq)
-          new-board
-          (if (= human player)
-            (let [cell (get-human-move board)]
-              (if-not (get-in board cell)
-                (assoc-in board cell human)
-                (throw (IllegalArgumentException. "cell already occupied!"))))
-            (time (->> (negamax board next-board-states game-over? score-board
-                                {:max-depth Integer/MAX_VALUE :computer computer :human human})
-                       (sort-by second)
-                       (ffirst))))]
-      (println player "turn:")
+         board board]
+    (let [{:keys [move-fn marker]} (first player-seq)
+          new-board (move-fn board)]
+      (println marker "turn:")
       (print-board new-board)
       (cond
         (empty? (open-coords new-board)) nil
@@ -74,17 +60,36 @@
 
 (defn index->coord [n dim] [(int (/ n dim)) (mod n dim)])
 
+(defn negamax-move
+  "Returns the board having applied the 'best' move."
+  [player opponent board]
+  (->> (negamax board next-board-states game-over? score-board
+                {:max-depth Integer/MAX_VALUE :player player :opponent opponent})
+       (sort-by second)
+       (ffirst)))
+
+(def board-size 3)
+
+(defn human-move
+  "Returns the board with a user-supplied move applied."
+  [board]
+  (let [cell (index->coord
+              (->> (repeatedly #(try
+                                  (println "Enter cell number [1-9]:")
+                                  (Integer/parseInt (read-line))
+                                  (catch Exception _)))
+                   (filter (set (range 1 10)))
+                   (first)
+                   (dec))
+              board-size)]
+    (if-not (get-in board cell)
+      (assoc-in board cell 'O)
+      (throw (IllegalArgumentException. "cell already occupied!")))))
+
+(def players [{:marker 'O :move-fn human-move}
+              {:marker 'X :move-fn (partial negamax-move 'X 'O)}])
+
 (defn -main [& _args]
   (println "Let's play a game of Tic-tac-toe. You can go first!")
   (println "Enter your moves as if the grid were numbered like a phone pad.")
-  (play
-   (fn [& _]
-     (index->coord
-      (->> (repeatedly #(try
-                          (println "Enter cell number [1-9]:")
-                          (Integer/parseInt (read-line))
-                          (catch Exception _)))
-           (filter (set (range 1 10)))
-           (first)
-           (dec))
-      board-size))))
+  (play (make-board board-size) players))
