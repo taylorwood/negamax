@@ -46,13 +46,14 @@
 (defn next-board-states [board player]
   (map #(assoc-in board % player) (open-coords board)))
 
-(defn play [board players]
+(defn play [board players & {:keys [print?]}]
   (loop [player-seq (cycle players)
          board board]
     (let [{:keys [move-fn marker]} (first player-seq)
           new-board (move-fn board)]
-      (println marker "turn:")
-      (print-board new-board)
+      (when print?
+        (println marker "turn:")
+        (print-board new-board))
       (cond
         (empty? (open-coords new-board)) nil
         (winner new-board) (winner new-board)
@@ -92,4 +93,4 @@
 (defn -main [& _args]
   (println "Let's play a game of Tic-tac-toe. You can go first!")
   (println "Enter your moves as if the grid were numbered like a phone pad.")
-  (play (make-board board-size) players))
+  (play (make-board board-size) players :print? true))
